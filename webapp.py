@@ -594,4 +594,479 @@ body{background:radial-gradient(ellipse at top,#1a1837 0%,var(--bg) 45%) fixed}
   <div class="grid" id="grid"></div>
   <div class="bbar">
     <button class="bbtn active" onclick="goTab('catalog')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" 
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <small>Каталог</small>
+    </button>
+    <button class="bbtn" onclick="goTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <small>Профиль</small>
+    </button>
+  </div>
+</div>
+
+<!-- ============ МОДЕЛЬ ============ -->
+<div id="s-model" class="screen"><div id="model-c"></div></div>
+
+<!-- ============ ПРОФИЛЬ ============ -->
+<div id="s-profile" class="screen">
+  <div class="top">
+    <div class="top-l">
+      <div class="top-badge">
+        <div class="top-badge-icon">🌙</div>
+        <span class="top-badge-txt">LUNA</span>
+      </div>
+      <div class="top-city">
+        <span>📍</span>
+        <span id="prof-city">Москва</span>
+      </div>
+    </div>
+    <button class="btn-i" onclick="tgClose()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="prof-hero">
+    <div class="prof-av-wrap">
+      <div class="prof-av">
+        <div class="prof-av-inner" id="prof-avatar">👤</div>
+      </div>
+    </div>
+    <div class="prof-name" id="prof-name">Пользователь</div>
+    <div class="prof-meta">
+      ID: <b id="prof-id">—</b> &nbsp;•&nbsp; <b id="prof-username">@user</b>
+    </div>
+  </div>
+  <div class="prof-balance">
+    <div class="pb-lbl">Баланс</div>
+    <div class="pb-v"><span id="prof-balance">0</span> ₽</div>
+    <button class="pb-btn" onclick="askManager('Хочу пополнить баланс')">
+      <span style="font-size:18px">+</span> Пополнить
+    </button>
+  </div>
+  <div class="stitle" style="margin-top:26px">Настройки</div>
+  <div class="set-list">
+    <div class="set-item">
+      <div class="set-icon">📳</div>
+      <div class="set-name">Вибрация</div>
+      <div class="toggle on" id="tog-vib" onclick="tog(this,'vib')"></div>
+    </div>
+    <div class="set-item">
+      <div class="set-icon">🔔</div>
+      <div class="set-name">Звуки</div>
+      <div class="toggle on" id="tog-snd" onclick="tog(this,'snd')"></div>
+    </div>
+    <div class="set-item">
+      <div class="set-icon">❤️</div>
+      <div class="set-name">Избранное</div>
+      <div style="color:var(--gold);font-weight:700;font-size:14px" id="prof-fav-cnt">0</div>
+    </div>
+  </div>
+  <div class="stitle" style="margin-top:26px">История операций</div>
+  <div class="hist-empty">
+    <div class="hist-icon">🕐</div>
+    <div class="hist-txt">История пуста</div>
+  </div>
+  <button class="support-btn" onclick="askManager('Здравствуйте! Мне нужна помощь.')">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Написать в поддержку
+  </button>
+  <div class="bbar">
+    <button class="bbtn" onclick="goTab('catalog')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <small>Каталог</small>
+    </button>
+    <button class="bbtn active" onclick="goTab('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <small>Профиль</small>
+    </button>
+  </div>
+</div>
+
+<!-- ============ ФИЛЬТРЫ ============ -->
+<div id="m-filters" class="modal">
+  <div class="modal-ov" onclick="hideM('filters')"></div>
+  <div class="bsheet">
+    <div class="modal-h">
+      <h3>Фильтры</h3>
+      <button class="btn-i" onclick="hideM('filters')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="fg">
+      <label>Цена за час (₽)</label>
+      <div class="frow">
+        <input class="finp" type="number" id="fp-min" placeholder="От">
+        <span style="color:var(--t3);font-weight:600">—</span>
+        <input class="finp" type="number" id="fp-max" placeholder="До">
+      </div>
+    </div>
+    <div class="fg">
+      <label>Возраст</label>
+      <div class="frow">
+        <input class="finp" type="number" id="fa-min" placeholder="От 18" value="18">
+        <span style="color:var(--t3);font-weight:600">—</span>
+        <input class="finp" type="number" id="fa-max" placeholder="До">
+      </div>
+    </div>
+    <div class="factions">
+      <button class="btn-res" onclick="resetF()">Сброс</button>
+      <button class="btn-app" id="btn-apply" onclick="applyF()">Показать</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ОПЛАТА ============ -->
+<div id="m-pay" class="modal">
+  <div class="modal-ov" onclick="hideM('pay')"></div>
+  <div class="bsheet">
+    <div class="modal-h">
+      <h3>Оплата</h3>
+      <button class="btn-i" onclick="hideM('pay')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="pay-amt">
+      <div class="pay-lbl">Сумма к оплате</div>
+      <div class="pay-p" id="pay-p">0 ₽</div>
+      <div class="pay-d" id="pay-d">Время бронирования: 1 час</div>
+    </div>
+
+    <div class="contact-title">Способ связи с менеджером</div>
+    <div class="contact-opts">
+      <button class="c-opt sel" onclick="selContact(this,'bot')">
+        <div class="c-radio"></div>
+        <div class="c-ic">📩</div>
+        <div class="c-info">
+          <div class="c-name">Через бота</div>
+          <div class="c-hint">Менеджер ответит в чат бота</div>
+        </div>
+      </button>
+      <button class="c-opt" onclick="selContact(this,'direct')">
+        <div class="c-radio"></div>
+        <div class="c-ic">💬</div>
+        <div class="c-info">
+          <div class="c-name">Написать напрямую</div>
+          <div class="c-hint">Откроется чат с @__MGR__</div>
+        </div>
+      </button>
+      <button class="c-opt" onclick="selContact(this,'manager_writes')">
+        <div class="c-radio"></div>
+        <div class="c-ic">📞</div>
+        <div class="c-info">
+          <div class="c-name">Менеджер напишет мне</div>
+          <div class="c-hint">Если у вас спам-блок в Telegram</div>
+        </div>
+      </button>
+    </div>
+
+    <div class="contact-title">Способ оплаты</div>
+    <div class="pmethods">
+      <button class="pm" onclick="pay('balance')">
+        <span class="pm-i balance">💳</span>
+        <div class="pm-info">
+          <span class="pm-n">Баланс</span>
+          <span class="pm-h">Мгновенно</span>
+        </div>
+        <span class="pm-a">›</span>
+      </button>
+      <button class="pm" onclick="pay('card')">
+        <span class="pm-i card">💳</span>
+        <div class="pm-info"><span class="pm-n">Банковская карта</span></div>
+        <span class="pm-a">›</span>
+      </button>
+      <button class="pm" onclick="showM('crypto')">
+        <span class="pm-i crypto">₿</span>
+        <div class="pm-info"><span class="pm-n">Криптовалюта</span></div>
+        <span class="pm-a">›</span>
+      </button>
+      <button class="pm" onclick="pay('manager')">
+        <span class="pm-i mgr">💬</span>
+        <div class="pm-info">
+          <span class="pm-n">Менеджер</span>
+          <span class="pm-h">Ручной приём оплаты</span>
+        </div>
+        <span class="pm-a">›</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ КРИПТА ============ -->
+<div id="m-crypto" class="modal">
+  <div class="modal-ov" onclick="hideM('crypto')"></div>
+  <div class="bsheet">
+    <div class="modal-h">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn-i" onclick="hideM('crypto');showM('pay')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <h3>Криптовалюта</h3>
+      </div>
+      <button class="btn-i" onclick="hideM('crypto')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="crypto-grid">
+      <div class="crypto-c" onclick="pay('crypto_usdt')">
+        <div class="crypto-ic usdt">$</div>
+        <div class="crypto-n">USDT</div>
+      </div>
+      <div class="crypto-c" onclick="pay('crypto_btc')">
+        <div class="crypto-ic btc">₿</div>
+        <div class="crypto-n">BTC</div>
+      </div>
+      <div class="crypto-c" onclick="pay('crypto_ton')">
+        <div class="crypto-ic ton">💎</div>
+        <div class="crypto-n">TON</div>
+      </div>
+      <div class="crypto-c" onclick="pay('crypto_eth')">
+        <div class="crypto-ic eth">Ξ</div>
+        <div class="crypto-n">ETH</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='';
+const MGR='__MGR__';
+let city='',models=[],allModels=[],selPrice=null,selModel=null,contactMethod='bot';
+let favs=JSON.parse(localStorage.getItem('luna_fav')||'[]');
+let showingFavs=false;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(window.Telegram&&Telegram.WebApp){
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    try{
+      Telegram.WebApp.setHeaderColor('#0B0D1A');
+      Telegram.WebApp.setBackgroundColor('#0B0D1A');
+    }catch(e){}
+    initProfile();
+  }
+  loadCities();
+});
+
+function initProfile(){
+  const u=Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user;
+  if(u){
+    document.getElementById('prof-name').textContent=u.first_name||'Пользователь';
+    document.getElementById('prof-id').textContent=u.id||'—';
+    document.getElementById('prof-username').textContent=u.username?('@'+u.username):'—';
+    document.getElementById('prof-avatar').textContent=(u.first_name||'U')[0].toUpperCase();
+  }
+  document.getElementById('prof-fav-cnt').textContent=favs.length;
+}
+
+function tgClose(){if(window.Telegram)Telegram.WebApp.close()}
+function haptic(t){try{if(window.Telegram)Telegram.WebApp.HapticFeedback.impactOccurred(t||'light')}catch(e){}}
+function go(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('s-'+n).classList.add('active');haptic()}
+function goTab(n){go(n);if(n==='profile'){document.getElementById('prof-city').textContent=city||'Все города';document.getElementById('prof-fav-cnt').textContent=favs.length}}
+function showM(n){document.getElementById('m-'+n).classList.add('active')}
+function hideM(n){document.getElementById('m-'+n).classList.remove('active')}
+function fmt(p){return p?p.toLocaleString('ru-RU')+' ₽':'—'}
+function fmtD(d){if(!d)return'';let x=new Date(d);return x.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'})}
+
+function tog(el,key){el.classList.toggle('on');localStorage.setItem('luna_'+key,el.classList.contains('on')?'1':'0');haptic()}
+
+async function loadCities(){
+  let c;
+  try{let r=await fetch(API+'/api/cities');c=await r.json()}catch(e){c=[]}
+  let t=0;
+  document.getElementById('cities-list').innerHTML=c.map(x=>{
+    t+=x.models_count||0;
+    return '<div class="city-c" onclick="selCity(\''+x.name+'\')"><div class="city-l2"><div class="city-icon">📍</div><div><div class="city-n">'+x.name+'</div><div class="city-cnt"><b>'+(x.models_count||0)+'</b> моделей онлайн</div></div></div><span class="city-arr">›</span></div>'
+  }).join('');
+  document.getElementById('total-on').textContent=t;
+}
+
+async function selCity(n){
+  city=n;
+  document.getElementById('cur-city').textContent=n;
+  document.getElementById('prof-city').textContent=n;
+  go('catalog');
+  await loadModels();
+}
+
+async function loadModels(f){
+  f=f||{};
+  showingFavs=false;
+  try{
+    let u=API+'/api/models/'+encodeURIComponent(city);
+    let p=new URLSearchParams();
+    if(f.price_min)p.set('price_min',f.price_min);
+    if(f.price_max)p.set('price_max',f.price_max);
+    if(f.age_min)p.set('age_min',f.age_min);
+    if(f.age_max)p.set('age_max',f.age_max);
+    if(p.toString())u+='?'+p;
+    let r=await fetch(u);
+    allModels=await r.json();
+    models=allModels;
+  }catch(e){models=[];allModels=[]}
+  renderGrid();
+}
+
+function renderGrid(){
+  let g=document.getElementById('grid');
+  document.getElementById('m-count').textContent=models.length;
+  if(!models.length){
+    g.innerHTML='<div class="empty"><div class="empty-i">🌙</div><div class="empty-t">Модели не найдены<br><span style="opacity:.6">Попробуйте изменить фильтры</span></div></div>';
+    return
+  }
+  g.innerHTML=models.map(m=>{
+    let liked=favs.indexOf(m.id)>-1;
+    let tags='';
+    if(m.is_verified)tags+='<span class="tag tag-v">✓ VERIF</span>';
+    (m.tags||[]).forEach(t=>{
+      if(t==='Новинка')tags+='<span class="tag tag-n">NEW</span>';
+      if(t==='Горящая')tags+='<span class="tag tag-h">🔥 HOT</span>'
+    });
+    let vb=m.is_verified?'<span class="vb">✓</span>':'';
+    return '<div class="card" onclick="openM('+m.id+')"><img src="'+m.main_photo+'" loading="lazy" onerror="this.src=\'https://via.placeholder.com/400x600/1A1D30/E5B547?text=LUNA\'"><div class="card-tags">'+tags+'</div><button class="card-like '+(liked?'liked':'')+'" onclick="event.stopPropagation();togLike('+m.id+',this)">'+(liked?'❤️':'♡')+'</button><div class="card-info"><div class="card-name">'+m.name+' '+vb+'</div><div class="card-meta"><span class="card-price">'+fmt(m.price_1h)+'/ч</span><span>•</span><span>'+m.age+' лет</span></div></div><div class="card-id">#'+m.id+'</div></div>'
+  }).join('');
+}
+
+async function openM(id){
+  let m;
+  try{let r=await fetch(API+'/api/model/'+id);m=await r.json()}catch(e){m=null}
+  if(!m||m.error)return;
+  selModel=m;
+  selPrice={dur:'1 час',price:m.price_1h};
+  let liked=favs.indexOf(m.id)>-1;
+  let vb=m.is_verified?'<span class="vb">✓</span>':'';
+  let gal=(m.gallery||[]).map(p=>'<div class="gitem"><img src="'+p+'" alt="18+"><div class="glock"><div class="glock-i">🔒</div><div class="glock-t">18+</div></div></div>').join('');
+  if(!gal){
+    for(let i=0;i<4;i++){
+      gal+='<div class="gitem"><img src="'+m.main_photo+'" alt="18+"><div class="glock"><div class="glock-i">🔒</div><div class="glock-t">18+</div></div></div>'
+    }
+  }
+  let revs=(m.reviews||[]).map(r=>'<div class="rev"><div class="rev-h"><div class="rev-u"><div class="rev-av">'+r.client_name[0]+'</div><span class="rev-n">'+r.client_name+'</span></div><span class="rev-d">'+fmtD(r.created_at)+'</span></div><div class="rev-s">'+'★'.repeat(r.rating)+'</div><div class="rev-t">'+r.text+'</div></div>').join('');
+  
+  document.getElementById('model-c').innerHTML='<div class="det"><div class="slider"><img src="'+m.main_photo+'" onerror="this.src=\'https://via.placeholder.com/400x600/1A1D30/E5B547?text=LUNA\'"><div class="slider-nav"><button class="slider-btn" onclick="go(\'catalog\')"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button><button class="slider-btn" onclick="togLike('+m.id+',this)">'+(liked?'❤️':'♡')+'</button></div><div class="slider-ov"><div class="det-name">'+m.name+' '+vb+'<span class="det-id">#'+m.id+'</span></div><div class="det-stats"><span>👁 '+(m.views||0)+'</span><span>❤️ '+(m.likes||0)+'</span><span>📍 '+m.city+'</span></div></div></div><div class="infos"><div class="info"><div class="info-l">Возраст</div><div class="info-v">'+m.age+'</div></div><div class="info"><div class="info-l">Рост</div><div class="info-v">'+(m.height||'—')+'</div></div><div class="info"><div class="info-l">Бюст</div><div class="info-v">'+(m.bust||'—')+'</div></div><div class="info"><div class="info-l">Цена</div><div class="info-v price">'+fmt(m.price_1h)+'</div></div></div><div class="sec"><div class="sec-t">О модели</div><div class="desc">'+(m.description||'Описание не указано.')+'</div></div><div class="sec" style="padding-bottom:0"><div class="sec-t">Галерея 18+</div></div><div class="gscroll">'+gal+'</div><div class="sec"><div class="sec-t">Прайс-лист</div></div><div class="plist"><div class="pitem sel" onclick="selP(this,\'1 час\','+m.price_1h+')"><div class="pitem-l"><div class="pitem-ic">🕐</div><span class="pitem-n">1 час</span></div><div class="pitem-r"><span class="pitem-c">'+fmt(m.price_1h)+'</span><div class="pradio"></div></div></div>'+(m.price_2h?'<div class="pitem" onclick="selP(this,\'2 часа\','+m.price_2h+')"><div class="pitem-l"><div class="pitem-ic">🕑</div><span class="pitem-n">2 часа</span></div><div class="pitem-r"><span class="pitem-c">'+fmt(m.price_2h)+'</span><div class="pradio"></div></div></div>':'')+(m.price_night?'<div class="pitem" onclick="selP(this,\'Ночь\','+m.price_night+')"><div class="pitem-l"><div class="pitem-ic">🌙</div><span class="pitem-n">Ночь</span></div><div class="pitem-r"><span class="pitem-c">'+fmt(m.price_night)+'</span><div class="pradio"></div></div></div>':'')+'</div>'+(revs?'<div class="rev-hd"><div class="sec-t" style="padding:0;margin:0">Отзывы</div><span class="rev-ver">✓ Проверенные клиенты</span></div><div class="sec" style="padding-top:10px">'+revs+'</div>':'')+'<div class="bookwrap"><button class="btn-book" onclick="openPayment()">Забронировать →</button></div></div>';
+  go('model');
+  haptic('medium');
+}
+
+function openPayment(){
+  if(!selPrice||!selModel)return;
+  document.getElementById('pay-p').textContent=fmt(selPrice.price);
+  document.getElementById('pay-d').textContent='Время бронирования: '+selPrice.dur;
+  showM('pay');
+}
+
+function selP(el,dur,price){
+  document.querySelectorAll('.pitem').forEach(i=>i.classList.remove('sel'));
+  el.classList.add('sel');
+  selPrice={dur:dur,price:price};
+  haptic('light')
+}
+
+function togLike(id,btn){
+  let i=favs.indexOf(id);
+  if(i>-1){
+    favs.splice(i,1);
+    if(btn){btn.classList.remove('liked');btn.innerHTML='♡'}
+  }else{
+    favs.push(id);
+    if(btn){btn.classList.add('liked');btn.innerHTML='❤️'}
+    fetch(API+'/api/like/'+id,{method:'POST'}).catch(()=>{})
+  }
+  localStorage.setItem('luna_fav',JSON.stringify(favs));
+  document.getElementById('prof-fav-cnt').textContent=favs.length;
+  haptic()
+}
+
+function toggleFav(){
+  if(showingFavs){
+    models=allModels;
+    showingFavs=false;
+  }else{
+    if(!favs.length){
+      if(window.Telegram)Telegram.WebApp.showAlert('У вас пока нет избранных моделей');
+      return;
+    }
+    models=allModels.filter(m=>favs.indexOf(m.id)>-1);
+    showingFavs=true;
+  }
+  renderGrid();
+}
+
+function doSearch(e){
+  if(e.key==='Enter'){
+    let q=document.getElementById('sinput').value.trim().replace('#','');
+    if(q&&!isNaN(q)){
+      let m=allModels.find(x=>x.id===parseInt(q));
+      if(m)openM(m.id);
+      else if(window.Telegram)Telegram.WebApp.showAlert('Модель с ID #'+q+' не найдена');
+    }
+  }
+}
+
+function resetF(){
+  document.getElementById('fp-min').value='';
+  document.getElementById('fp-max').value='';
+  document.getElementById('fa-min').value='18';
+  document.getElementById('fa-max').value='';
+  loadModels();
+  hideM('filters')
+}
+
+function applyF(){
+  let f={
+    price_min:document.getElementById('fp-min').value||null,
+    price_max:document.getElementById('fp-max').value||null,
+    age_min:document.getElementById('fa-min').value||null,
+    age_max:document.getElementById('fa-max').value||null
+  };
+  loadModels(f);
+  hideM('filters')
+}
+
+function selContact(el,method){
+  contactMethod=method;
+  document.querySelectorAll('.c-opt').forEach(o=>o.classList.remove('sel'));
+  el.classList.add('sel');
+  haptic()
+}
+
+function pay(method){
+  if(!selModel||!selPrice)return;
+  hideM('pay');
+  hideM('crypto');
+  haptic('medium');
+  let data={
+    action:'booking',
+    model_id:selModel.id,
+    model_name:selModel.name,
+    duration:selPrice.dur,
+    price:selPrice.price,
+    payment_method:method,
+    contact_method:contactMethod
+  };
+  if(window.Telegram&&Telegram.WebApp.sendData){
+    Telegram.WebApp.sendData(JSON.stringify(data));
+  }else{
+    fetch(API+'/api/booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+      .then(r=>r.json())
+      .then(d=>alert('Бронирование #'+d.booking_id+' создано!'))
+      .catch(()=>alert('Заявка отправлена!'))
+  }
+}
+
+function askManager(text){
+  if(window.Telegram){
+    if(window.Telegram.WebApp.openTelegramLink){
+      Telegram.WebApp.openTelegramLink('https://t.me/'+MGR);
+    }else{
+      Telegram.WebApp.showAlert('Свяжитесь с @'+MGR);
+    }
+  }
+  haptic();
+}
+</script>
+</body>
+</html>"""
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
