@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import requests
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
 from psycopg2.extras import RealDictCursor
@@ -18,6 +19,7 @@ app = Flask(__name__)
 MANAGER_USERNAME = os.getenv("MANAGER_USERNAME", "Luna_Support3")
 USDT_ADDRESS = os.getenv("USDT_TRC20", "")
 TON_ADDRESS = os.getenv("TON_WALLET", "")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
 DEMO_PHOTOS = [
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop&crop=face",
@@ -38,13 +40,49 @@ DEMO_NAMES = ["София", "Виктория", "Алиса", "Милана", "�
               "Камилла", "Эмилия", "Николь", "Ариана", "Стефания", "Аделина"]
 
 # ═══════════════════════════════════════════════════════════
-# INIT DB (создаёт таблицы при импорте)
+# INIT DB
 # ═══════════════════════════════════════════════════════════
 init_db_sync()
 
 # ═══════════════════════════════════════════════════════════
+# PHOTO HELPERS
+# ═══════════════════════════════════════════════════════════
+_photo_url_cache = {}
+
+def is_file_id(value: str) -> bool:
+    if not value:
+        return False
+    if value.startswith("http://") or value.startswith("https://"):
+        return False
+    return len(value) > 20 and " " not in value
+
+def resolve_photo_url(file_id: str, fallback_idx: int = 0) -> str:
+    if not file_id:
+        return DEMO_PHOTOS[fallback_idx % len(DEMO_PHOTOS)]
+    if not is_file_id(file_id):
+        return file_id
+    if file_id in _photo_url_cache:
+        return _photo_url_cache[file_id]
+    if not BOT_TOKEN:
+        return DEMO_PHOTOS[fallback_idx % len(DEMO_PHOTOS)]
+    try:
+        resp = requests.get(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/getFile",
+            params={"file_id": file_id}, timeout=5
+        )
+        data = resp.json()
+        if data.get("ok"):
+            file_path = data["result"]["file_path"]
+            url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+            _photo_url_cache[file_id] = url
+            return url
+    except Exception:
+        pass
+    return DEMO_PHOTOS[fallback_idx % len(DEMO_PHOTOS)]
+
+# ═══════════════════════════════════════════════════════════
 # API ENDPOINTS
-# ════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════
 
 @app.route("/api/cities")
 def api_cities():
@@ -82,11 +120,12 @@ def api_models(city):
             models = cur.fetchall()
 
     for i, m in enumerate(models):
-        if not m.get('main_photo'):
-            m['main_photo'] = DEMO_PHOTOS[i % len(DEMO_PHOTOS)]
+        m['main_photo'] = resolve_photo_url(m.get('main_photo', ''), i)
         try: m['tags'] = json.loads(m.get('tags', '[]'))
         except: m['tags'] = []
-        try: m['gallery'] = json.loads(m.get('gallery', '[]'))
+        try:
+            gallery = json.loads(m.get('gallery', '[]'))
+            m['gallery'] = [resolve_photo_url(p, i) for p in gallery if p]
         except: m['gallery'] = []
     return jsonify(models)
 
@@ -103,11 +142,12 @@ def api_model(model_id):
             cur.execute("UPDATE models SET views=views+1 WHERE id=%s", (model_id,))
             conn.commit()
 
-            if not m.get('main_photo'):
-                m['main_photo'] = DEMO_PHOTOS[model_id % len(DEMO_PHOTOS)]
+            m['main_photo'] = resolve_photo_url(m.get('main_photo', ''), model_id)
             try: m['tags'] = json.loads(m.get('tags', '[]'))
             except: m['tags'] = []
-            try: m['gallery'] = json.loads(m.get('gallery', '[]'))
+            try:
+                gallery = json.loads(m.get('gallery', '[]'))
+                m['gallery'] = [resolve_photo_url(p, model_id) for p in gallery if p]
             except: m['gallery'] = []
 
             cur.execute("SELECT * FROM reviews WHERE model_id=%s ORDER BY created_at DESC", (model_id,))
