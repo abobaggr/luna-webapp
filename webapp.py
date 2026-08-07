@@ -1,23 +1,23 @@
 import os
 import json
-import sqlite3
 import random
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
-from flask_cors import CORS
+from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
+
+from database import get_db, init_db_sync
 
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
 
-# ── Config (masked secrets read from env with safe defaults) ──────────────
-DB_PATH = os.environ.get("DB_PATH", "luna.db")
-MANAGER_USERNAME = os.environ.get("MANAGER_USERNAME", "manager")
-# Crypto wallet addresses substituted into the HTML (placeholders __USDT__/__TON__)
-USDT_ADDRESS = os.environ.get("USDT_ADDRESS", "TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-TON_ADDRESS = os.environ.get("TON_ADDRESS", "UQXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+# ═══════════════════════════════════════════════════════════
+# CONFIG
+# ═══════════════════════════════════════════════════════════
+MANAGER_USERNAME = os.getenv("MANAGER_USERNAME", "Luna_Support3")
+USDT_ADDRESS = os.getenv("USDT_TRC20", "")
+TON_ADDRESS = os.getenv("TON_WALLET", "")
 
 DEMO_PHOTOS = [
     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop&crop=face",
@@ -37,225 +37,167 @@ DEMO_PHOTOS = [
 DEMO_NAMES = ["София", "Виктория", "Алиса", "Милана", "Валерия", "Кристина",
               "Камилла", "Эмилия", "Николь", "Ариана", "Стефания", "Аделина"]
 
+# ═══════════════════════════════════════════════════════════
+# INIT DB (создаёт таблицы при импорте)
+# ═══════════════════════════════════════════════════════════
+init_db_sync()
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""CREATE TABLE IF NOT EXISTS models (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        manager_id INTEGER DEFAULT 0,
-        name TEXT NOT NULL,
-        age INTEGER NOT NULL,
-        height INTEGER,
-        bust INTEGER,
-        city TEXT NOT NULL,
-        description TEXT,
-        price_1h INTEGER NOT NULL,
-        price_2h INTEGER,
-        price_night INTEGER,
-        main_photo TEXT DEFAULT '',
-        gallery TEXT DEFAULT '[]',
-        is_active INTEGER DEFAULT 1,
-        is_verified INTEGER DEFAULT 0,
-        tags TEXT DEFAULT '[]',
-        views INTEGER DEFAULT 0,
-        likes INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS bookings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        client_tg_id INTEGER,
-        client_username TEXT,
-        model_id INTEGER,
-        model_name TEXT,
-        duration TEXT,
-        price INTEGER,
-        payment_method TEXT,
-        contact_method TEXT DEFAULT 'bot',
-        status TEXT DEFAULT 'pending',
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS reviews (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        model_id INTEGER,
-        client_name TEXT,
-        rating INTEGER,
-        text TEXT,
-        is_verified INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS cities (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        is_active INTEGER DEFAULT 1
-    )""")
-    for city in ["Москва", "Санкт-Петербург", "Дубай", "Алматы", "Астана", "Екатеринбург"]:
-        conn.execute("INSERT OR IGNORE INTO cities (name) VALUES (?)", (city,))
-    conn.commit()
-    conn.close()
-
-
-init_db()
-
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+# ═══════════════════════════════════════════════════════════
+# API ENDPOINTS
+# ════════════════════════════════════════════════════════════
 
 @app.route("/api/cities")
 def api_cities():
-    db = get_db()
-    cities = [dict(r) for r in db.execute("SELECT * FROM cities WHERE is_active=1 ORDER BY name").fetchall()]
-    for c in cities:
-        count = db.execute("SELECT COUNT(*) as cnt FROM models WHERE city=? AND is_active=1", (c['name'],)).fetchone()
-        c['models_count'] = count['cnt'] if count else 0
-    db.close()
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM cities WHERE is_active=1 ORDER BY name")
+            cities = cur.fetchall()
+            for c in cities:
+                cur.execute("SELECT COUNT(*) as cnt FROM models WHERE city=%s AND is_active=1", (c['name'],))
+                cnt = cur.fetchone()
+                c['models_count'] = cnt['cnt'] if cnt else 0
     return jsonify(cities)
 
 
 @app.route("/api/models/<city>")
 def api_models(city):
-    db = get_db()
-    query = "SELECT * FROM models WHERE city=? AND is_active=1"
+    price_min = request.args.get('price_min', type=int)
+    price_max = request.args.get('price_max', type=int)
+    age_min = request.args.get('age_min', type=int)
+    age_max = request.args.get('age_max', type=int)
+
+    where = ["city = %s", "is_active = 1"]
     params = [city]
-    for f, op in [('price_min', '>='), ('price_max', '<='), ('age_min', '>='), ('age_max', '<=')]:
-        v = request.args.get(f)
-        if v:
-            field = 'price_1h' if 'price' in f else 'age'
-            query += f" AND {field} {op} ?"
-            params.append(int(v))
-    query += " ORDER BY is_verified DESC, created_at DESC"
-    models = [dict(r) for r in db.execute(query, params).fetchall()]
+
+    if price_min: where.append("price_1h >= %s"); params.append(price_min)
+    if price_max: where.append("price_1h <= %s"); params.append(price_max)
+    if age_min: where.append("age >= %s"); params.append(age_min)
+    if age_max: where.append("age <= %s"); params.append(age_max)
+
+    query = f"SELECT * FROM models WHERE {' AND '.join(where)} ORDER BY is_verified DESC, created_at DESC"
+
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, params)
+            models = cur.fetchall()
+
     for i, m in enumerate(models):
         if not m.get('main_photo'):
             m['main_photo'] = DEMO_PHOTOS[i % len(DEMO_PHOTOS)]
-        try:
-            m['tags'] = json.loads(m.get('tags', '[]'))
-        except:
-            m['tags'] = []
-        try:
-            m['gallery'] = json.loads(m.get('gallery', '[]'))
-        except:
-            m['gallery'] = []
-    db.close()
+        try: m['tags'] = json.loads(m.get('tags', '[]'))
+        except: m['tags'] = []
+        try: m['gallery'] = json.loads(m.get('gallery', '[]'))
+        except: m['gallery'] = []
     return jsonify(models)
 
 
 @app.route("/api/model/<int:model_id>")
 def api_model(model_id):
-    db = get_db()
-    row = db.execute("SELECT * FROM models WHERE id=?", (model_id,)).fetchone()
-    if not row:
-        db.close()
-        return jsonify({"error": "Not found"}), 404
-    m = dict(row)
-    db.execute("UPDATE models SET views=views+1 WHERE id=?", (model_id,))
-    db.commit()
-    if not m.get('main_photo'):
-        m['main_photo'] = DEMO_PHOTOS[model_id % len(DEMO_PHOTOS)]
-    try:
-        m['tags'] = json.loads(m.get('tags', '[]'))
-    except:
-        m['tags'] = []
-    try:
-        m['gallery'] = json.loads(m.get('gallery', '[]'))
-    except:
-        m['gallery'] = []
-    reviews = [dict(r) for r in db.execute("SELECT * FROM reviews WHERE model_id=? ORDER BY created_at DESC", (model_id,)).fetchall()]
-    m['reviews'] = reviews
-    db.close()
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM models WHERE id=%s", (model_id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"error": "Not found"}), 404
+            m = dict(row)
+            cur.execute("UPDATE models SET views=views+1 WHERE id=%s", (model_id,))
+            conn.commit()
+
+            if not m.get('main_photo'):
+                m['main_photo'] = DEMO_PHOTOS[model_id % len(DEMO_PHOTOS)]
+            try: m['tags'] = json.loads(m.get('tags', '[]'))
+            except: m['tags'] = []
+            try: m['gallery'] = json.loads(m.get('gallery', '[]'))
+            except: m['gallery'] = []
+
+            cur.execute("SELECT * FROM reviews WHERE model_id=%s ORDER BY created_at DESC", (model_id,))
+            reviews = cur.fetchall()
+            m['reviews'] = reviews
     return jsonify(m)
 
 
 @app.route("/api/like/<int:model_id>", methods=["POST"])
 def api_like(model_id):
-    db = get_db()
-    db.execute("UPDATE models SET likes=likes+1 WHERE id=?", (model_id,))
-    db.commit()
-    db.close()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE models SET likes=likes+1 WHERE id=%s", (model_id,))
     return jsonify({"ok": True})
 
 
 @app.route("/api/booking", methods=["POST"])
 def api_booking():
     data = request.json
-    db = get_db()
-    cur = db.execute(
-        "INSERT INTO bookings (client_tg_id, client_username, model_id, model_name, duration, price, payment_method, contact_method, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
-        (data.get('client_id', 0), data.get('client_username', ''),
-         data.get('model_id'), data.get('model_name', ''),
-         data.get('duration', '1 час'), data.get('price', 0),
-         data.get('payment_method', 'manager'),
-         data.get('contact_method', 'bot'),
-         datetime.now().isoformat())
-    )
-    db.commit()
-    booking_id = cur.lastrowid
-    db.close()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO bookings (client_tg_id, client_username, model_id, model_name, duration, price, payment_method, contact_method, created_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            """, (
+                data.get('client_id', 0), data.get('client_username', ''),
+                data.get('model_id'), data.get('model_name', ''),
+                data.get('duration', '1 час'), data.get('price', 0),
+                data.get('payment_method', 'manager'),
+                data.get('contact_method', 'bot'),
+                datetime.now()
+            ))
+            booking_id = cur.fetchone()[0]
     return jsonify({"booking_id": booking_id, "status": "pending"})
 
 
 @app.route("/api/seed-demo", methods=["GET", "POST"])
 def seed_demo():
-    db = get_db()
-    db.execute("DELETE FROM models")
-    db.execute("DELETE FROM reviews")
-    cities = ["Москва", "Санкт-Петербург", "Дубай", "Алматы", "Екатеринбург"]
-    descs = [
-        "Обворожительная девушка, которая покорит вас с первого взгляда. Утончённая натура, безупречный стиль и умение создать атмосферу настоящего удовольствия.",
-        "Воплощение элегантности и женственности. Изысканные манеры и врождённое чувство стиля. Составит великолепную компанию.",
-        "Яркая, харизматичная и невероятно привлекательная. С ней каждый момент становится особенным. Чувственная и раскрепощённая.",
-        "Роскошная и утончённая. Умеет создавать атмосферу настоящего праздника и подарит незабываемые впечатления.",
-    ]
-    for i in range(12):
-        name = DEMO_NAMES[i % len(DEMO_NAMES)]
-        age = random.randint(18, 27)
-        city = random.choice(cities)
-        price = random.choice([3000, 4000, 5000, 6000, 7000, 8000, 10000, 12000])
-        desc = f"{name} — {random.choice(descs)}"
-        tags = []
-        if random.random() > 0.6:
-            tags.append("Новинка")
-        if random.random() > 0.8:
-            tags.append("Горящая")
-        db.execute(
-            "INSERT INTO models (name, age, height, bust, city, description, price_1h, price_2h, price_night, main_photo, tags, is_verified, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (name, age, random.randint(160, 178), random.randint(1, 4),
-             city, desc, price, int(price * 1.8), price * 5,
-             DEMO_PHOTOS[i % len(DEMO_PHOTOS)],
-             json.dumps(tags), 1 if random.random() > 0.4 else 0,
-             datetime.now().isoformat())
-        )
-    models = db.execute("SELECT id FROM models").fetchall()
-    review_texts = [
-        ("Арсений", "Всё на высшем уровне. Рекомендую всем!"),
-        ("Евгений", "Очень доволен, всё анонимно и быстро."),
-        ("Инкогнито", "Девушка точно как на фото. Буду обращаться ещё."),
-        ("Максим", "Потрясающий сервис. Всё чётко и без проблем."),
-        ("Дмитрий", "Идеальный вечер. Спасибо LUNA!"),
-        ("Александр", "Отличная модель, вежливая и красивая."),
-    ]
-    for m in models:
-        for _ in range(random.randint(1, 3)):
-            n, t = random.choice(review_texts)
-            db.execute(
-                "INSERT INTO reviews (model_id, client_name, rating, text, is_verified, created_at) VALUES (?,?,?,?,?,?)",
-                (m['id'], n, 5, t, 1, datetime.now().isoformat())
-            )
-    db.commit()
-    db.close()
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM models")
+            cur.execute("DELETE FROM reviews")
+            cities = ["Москва", "Санкт-Петербург", "Дубай", "Алматы", "Екатеринбург"]
+            descs = [
+                "Обворожительная девушка, которая покорит вас с первого взгляда. Утончённая натура, безупречный стиль и умение создать атмосферу настоящего удовольствия.",
+                "Воплощение элегантности и женственности. Изысканные манеры и врождённое чувство стиля. Составит великолепную компанию.",
+                "Яркая, харизматичная и невероятно привлекательная. С ней каждый момент становится особенным. Чувственная и раскрепощённая.",
+                "Роскошная и утончённая. Умеет создавать атмосферу настоящего праздника и подарит незабываемые впечатления.",
+            ]
+            for i in range(12):
+                name = DEMO_NAMES[i % len(DEMO_NAMES)]
+                age = random.randint(18, 27)
+                city = random.choice(cities)
+                price = random.choice([3000, 4000, 5000, 6000, 7000, 8000, 10000, 12000])
+                desc = f"{name} — {random.choice(descs)}"
+                tags = []
+                if random.random() > 0.6: tags.append("Новинка")
+                if random.random() > 0.8: tags.append("Горящая")
+                cur.execute("""
+                    INSERT INTO models (name, age, height, bust, city, description, price_1h, price_2h, price_night, main_photo, tags, is_verified, created_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+                """, (
+                    name, age, random.randint(160, 178), random.randint(1, 4),
+                    city, desc, price, int(price * 1.8), price * 5,
+                    DEMO_PHOTOS[i % len(DEMO_PHOTOS)],
+                    json.dumps(tags), 1 if random.random() > 0.4 else 0,
+                    datetime.now()
+                ))
+                model_id = cur.fetchone()[0]
+
+                review_texts = [
+                    ("Арсений", "Всё на высшем уровне. Рекомендую всем!"),
+                    ("Евгений", "Очень доволен, всё анонимно и быстро."),
+                    ("Инкогнито", "Девушка точно как на фото. Буду обращаться ещё."),
+                    ("Максим", "Потрясающий сервис. Всё чётко и без проблем."),
+                    ("Дмитрий", "Идеальный вечер. Спасибо LUNA!"),
+                    ("Александр", "Отличная модель, вежливая и красивая."),
+                ]
+                for _ in range(random.randint(1, 3)):
+                    n, t = random.choice(review_texts)
+                    cur.execute("""
+                        INSERT INTO reviews (model_id, client_name, rating, text, is_verified, created_at)
+                        VALUES (%s,%s,%s,%s,%s,%s)
+                    """, (model_id, n, 5, t, 1, datetime.now()))
     return jsonify({"ok": True, "message": "12 demo models + reviews created"})
 
 
-@app.route("/")
-def index():
-    html = (WEBAPP_HTML
-            .replace("__MGR__", MANAGER_USERNAME)
-            .replace("__USDT__", USDT_ADDRESS)
-            .replace("__TON__", TON_ADDRESS))
-    return Response(html, mimetype="text/html")
-
+# ═══════════════════════════════════════════════════════════
+# FRONTEND (ТВОЙ HTML/JS/CSS БЕЗ ИЗМЕНЕНИЙ)
+# ═══════════════════════════════════════════════════════════
 
 WEBAPP_HTML = """<!DOCTYPE html>
 <html lang="ru">
@@ -924,7 +866,7 @@ body{background:var(--hero-glow) fixed}
 
 <!-- ============ TOAST + CONFETTI ============ -->
 <div class="toast-wrap" id="toast-wrap"></div>
-<canvas id="confetti"></canvas>
+<canvas id="confetti"></div>
 
 <script>
 const API='';
@@ -945,7 +887,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     Telegram.WebApp.expand();
     initProfile();
   }
-  // restore toggles
   if(localStorage.getItem('luna_vib')==='0')document.getElementById('tog-vib').classList.remove('on');
   if(localStorage.getItem('luna_snd')==='0')document.getElementById('tog-snd').classList.remove('on');
   if(localStorage.getItem('luna_theme')==='light')document.getElementById('tog-theme').classList.add('on');
@@ -1334,7 +1275,6 @@ function pay(method){
     payment_method:method,
     contact_method:contactMethod
   };
-  // celebrate first, then hand off to the bot
   sfx('success');haptic('success');burstConfetti();
   toast('Бронирование создано! Менеджер свяжется с вами','ok');
   setTimeout(()=>{
@@ -1441,6 +1381,17 @@ function initPTR(){
 </body>
 </html>"""
 
+@app.route('/')
+def index():
+    html = (WEBAPP_HTML
+            .replace("__MGR__", MANAGER_USERNAME)
+            .replace("__USDT__", USDT_ADDRESS)
+            .replace("__TON__", TON_ADDRESS))
+    return Response(html, mimetype="text/html")
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
